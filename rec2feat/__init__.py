@@ -1,14 +1,18 @@
+import pandas as pd
 from recfldgrn.datapoint import convert_PID_to_PIDgroup
 from .utils_ckpdrec import get_info_from_settings, get_Ckpd_from_PredDT, get_CkpdName_RecTable
 from .utils_recflt import filter_CkpdRec_fn
 from .utils_grnseq import get_df_ckpdrecfltgrn, generate_dfempty
 from .utils_vocab import build_SynFldVocab, get_update_SynFldVocab_and_GrnSeqName
 from .utils_cmp import compress_dfrec_with_CompressArgs, convert_df_compressed_to_DPLevel_tensor
+from .utils_fn import UTILS_Flt, UTILS_CMP
 
-def process_df_PDT_with_CONFIG_CkpdRecNameFlt(df_PDT, CONFIG_CkpdRecNameFlt, UTILS_Flt = UTILS_Flt):
+IDNAME = 'PID'
+RANGE_SIZE = 100
+UNK_TOKEN = '<UNK>'
+
+def process_df_PDT_with_CONFIG_CkpdRecNameFlt(df_PDT, CONFIG_PDT, CONFIG_CkpdRecNameFlt, UTILS_Flt = UTILS_Flt, RANGE_SIZE = RANGE_SIZE):
     df_PDT = df_PDT.copy()
-    
-    CONFIG_PDT = CONFIG_CkpdRecNameFlt['CONFIG_PDT']
     CONFIG_Ckpd = CONFIG_CkpdRecNameFlt['CONFIG_Ckpd']
     CONFIG_RecDB = CONFIG_CkpdRecNameFlt['CONFIG_RecDB']
     CONFIG_Flt = CONFIG_CkpdRecNameFlt['CONFIG_Flt']
@@ -75,11 +79,14 @@ def process_df_PDT_with_CONFIG_CkpdRecNameFlt(df_PDT, CONFIG_CkpdRecNameFlt, UTI
     return df_PDT_CkpdRecFlt, CkpdRecFlt
 
 
-def process_df_PDT_CkpdRecFlt_with_CONFIG_GrnSeq(df_PDT_CkpdRecFlt, CONFIG_GrnSeq):
+def process_df_PDT_CkpdRecFlt_with_CONFIG_GrnSeq(df_PDT_CkpdRecFlt, CONFIG_PDT, CONFIG_GrnSeq):
     df_PDT = df_PDT_CkpdRecFlt.copy()
     
     CkpdRecFlt = df_PDT.columns[-1]
     Ckpd, RecName, FilterName = CkpdRecFlt.split('.')
+    pdt_folder = CONFIG_PDT['pdt_folder']
+    PDTName = CONFIG_PDT['PDTName']
+    
     # -------- CONFIG_GrnSeq
     fldgrn_folder = CONFIG_GrnSeq['fldgrn_folder']
     fldgrnv_folder = CONFIG_GrnSeq['fldgrnv_folder']
@@ -114,12 +121,15 @@ def process_df_PDT_CkpdRecFlt_with_CONFIG_GrnSeq(df_PDT_CkpdRecFlt, CONFIG_GrnSe
     return df_PDT_CkpdRecFltGrn, CkpdRecFltTkn, SynFldVocab
 
 
-def process_df_PDT_CkpdRecFltGrn_with_CONFIG_CMP(df_PDT_CkpdRecFltTkn, CONFIG_GrnSeq, CONFIG_CMP, UTILS_CMP = UTILS_CMP):
+def process_df_PDT_CkpdRecFltGrn_with_CONFIG_CMP(df_PDT_CkpdRecFltTkn, CONFIG_PDT, CONFIG_GrnSeq, CONFIG_CMP, UTILS_CMP = UTILS_CMP, UNK_TOKEN = UNK_TOKEN):
     df_PDT = df_PDT_CkpdRecFltTkn.copy()
     
     CkpdRecFlt = df_PDT.columns[-2]
     CkpdRecFltGrn =  df_PDT.columns[-1]
     CkpdName, RecName, FilterName = CkpdRecFlt.split('.')
+
+    pdt_folder = CONFIG_PDT['pdt_folder']
+    PDTName = CONFIG_PDT['PDTName']
     
     # -------- CONFIG_CMP
     fldgrn_folder = CONFIG_GrnSeq['fldgrn_folder']
