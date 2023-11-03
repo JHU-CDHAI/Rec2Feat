@@ -2,11 +2,15 @@ import pandas as pd
 from recfldgrn.loadtools import get_df_bucket_from_settings
 
 
+
 def get_info_from_settings(Group, PID_List, RecChain_ARGS, RecInfo_ARGS):
     bucket_file = Group + '.p'
     df = get_df_bucket_from_settings(bucket_file, RecChain_ARGS, RecInfo_ARGS)
-    df = df[df['PID'].isin(PID_List)].reset_index(drop = True)
+    # print('get_info_from_settings', 'PID_List', PID_List)
+    if type(PID_List) == list:
+        df = df[df['PID'].isin(PID_List)].reset_index(drop = True)
     return df
+
 
 def get_Ckpd_from_PredDT(PredDT, DistStartToPredDT, DistEndToPredDT, TimeUnit, **kwargs):
     assert TimeUnit in ['H', 'D', 'min']
