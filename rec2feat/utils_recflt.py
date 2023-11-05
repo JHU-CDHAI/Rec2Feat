@@ -44,30 +44,3 @@ def filter_CkpdRec_fn(PredDT, df_CkpdRec, FilterName, FilterFunc, ThresShare, Th
     if len(df) == 0: return None
     return df
 
-
-
-######################## Hyper Paramters
-FilterName2FilterFunc = {
-    'Whl': lambda x: True, 
-    'Morning': lambda x: x['DT'].hour in [6,7,8,9,10,11],
-    'Afternoon': lambda x: x['DT'].hour in [12, 13, 14, 15, 16, 17],
-    'Evening': lambda x: x['DT'].hour in [18, 19, 20, 21, 22, 23],
-    'Night': lambda x: x['DT'].hour in [0, 1, 2, 3, 4, 5],
-}
-
-FilterName2Share = {
-    'Whl': 1, 
-    'Morning': 0.25,
-    'Afternoon': 0.25,
-    'Evening': 0.25,
-    'Night': 0.25,
-}
-
-RecName2ThresConfig = {
-    'CGM5Min': {
-        'RInDT': {'Threshold': 0,       'MaxNum': None,}, 
-        'DTInD': {'Threshold': 288*0.7, 'MaxNum': 288, }, 
-        'DInCP': {'Threshold': 0,       'MaxNum': None, },
-    }
-}
-########################
