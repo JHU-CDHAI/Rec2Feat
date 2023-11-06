@@ -1,3 +1,4 @@
+
 def whl_filter(x): return True
 def morning_filter(x): return x['DT'].hour in [6,7,8,9,10,11]
 def afternoon_filter(x): return x['DT'].hour in [12, 13, 14, 15, 16, 17]
@@ -38,9 +39,9 @@ UTILS_Flt = {
 }
 
 
-def df_mean(df): df.mean().round(3)
-def df_sum(df): df.sum().round(3)
-def df_cat(df): df: df.sum()
+def df_mean(df): return df.mean().round(3)
+def df_sum(df): return df.sum().round(3)
+def df_cat(df): return df.sum()
 
 ############ Hyperparameters
 method_to_fn = {
@@ -55,3 +56,5 @@ method_to_fn = {
 UTILS_CMP = {
     'method_to_fn': method_to_fn, 
 }
+
+

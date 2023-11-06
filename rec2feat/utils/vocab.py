@@ -32,31 +32,12 @@ def update_SynFldVocab(SynFldVocab, rfg, grn_list):
     rfg2idx = {v:k for k, v in enumerate(idx2rfg)}
     SynFldVocab['idx2rfg'] = idx2rfg
     SynFldVocab['rfg2idx'] = rfg2idx
-    return SynFldVocab      
+    return SynFldVocab        
 
-# update SynFldVocab
-def get_update_SynFldVocab_and_GrnSeqName(PDTName, CkpdName, RecName, FilterName, SynFldGrn, 
-                                          SynFldVocab, CompressArgs, 
-                                          prefix_layer_cols, focal_layer_cols):
-    
+def get_update_SynFldVocab(SynFldVocab, CompressArgs):
     # part 1: update SynFldVocab
     SynFldVocabNew = SynFldVocab.copy()
     for sourceInTarget in CompressArgs:
         SynFldVocabNew = update_SynFldVocab(SynFldVocabNew, sourceInTarget, [sourceInTarget])
-    
-    # Part 2: update SynFldGrn_Final
-    SEP = '.'
-    Methods = ''.join(reversed([i.split('In')[-1] +SEP+ Args['method']  for i, Args in CompressArgs.items()]))
-    SynFldGrn_Final = Methods + SynFldGrn
+    return SynFldVocabNew
 
-    # if 'CP' not in CkpdRecFltGrnCmp:
-    CkpdRecFltGrnCmp = SynFldGrn_Final
-    PDT_replace = PDTName.replace('PDT','PDT' + SEP) + SEP + CkpdName + 'CP' # replace PDT with PDT_suffix
-        
-    if len(prefix_layer_cols) > 0 and 'CP' not in SynFldGrn_Final:
-        CkpdRecFltGrnCmpFeat = ('-'.join([i.replace('ID', '') for i in prefix_layer_cols]) + '-' + CkpdRecFltGrnCmp).replace('PDT', PDT_replace)
-    else:
-        CkpdRecFltGrnCmpFeat = PDTName.replace('PDT','PDT'+SEP) + SEP + CkpdName + SynFldGrn_Final
-    
-    
-    return SynFldVocabNew, CkpdRecFltGrnCmp, CkpdRecFltGrnCmpFeat

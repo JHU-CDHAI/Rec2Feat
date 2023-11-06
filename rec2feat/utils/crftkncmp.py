@@ -1,8 +1,21 @@
 import pandas as pd
-import numpy as np
 from functools import reduce
+import numpy as np
+
+from .cmpfn import FlattenFunction, ConvertKey2ValueFunction, MergeLeftAndRight
+from .cmpfn import convert_df_grnseq_to_flatten, convert_df_flatten_to_grnseq
+from .cmpfn import add_sfx_as_new_locgrnseq_to_dfrec
+
 from recfldgrn.graintools import get_highorder_input_idx
-from .utils_grnseq import convert_df_grnseq_to_flatten, convert_df_flatten_to_grnseq
+
+def get_CkpdRecFltTknCmp_Name(CkpdRecFltTkn, CompressArgs, prefix_layer_cols, focal_layer_cols):
+    CkpdName, RecName, FilterName, SynFldGrn = CkpdRecFltTkn.split('.')
+    prefix = '-'.join(prefix_layer_cols).replace('PDTID', 'CP')
+    method = ''.join(reversed([i.split('In')[-1] +'.'+ Args['method']  for i, Args in CompressArgs.items()]))
+    SynFldTknCmp = '-'.join([prefix, method]) + SynFldGrn if len(prefix) > 0 else method + SynFldGrn
+    CkpdRecFltTknCmp = '.'.join([CkpdName, RecName, FilterName, SynFldTknCmp])
+    return CkpdRecFltTknCmp
+
 
 def compress_df_flatten_with_cmpfn(df_flatten, sourceInTarget, flatten_fn, prefix_cols):
     source, target = sourceInTarget.split('In')
@@ -12,42 +25,17 @@ def compress_df_flatten_with_cmpfn(df_flatten, sourceInTarget, flatten_fn, prefi
     drop_columns = [i for i in df_flatten.columns if i in prefix_cols[target_idx + 1:]]
     df = df_flatten.drop(columns = drop_columns)
     grn_cols = [i for i in df.columns if i not in new_prefix_cols]
-    df_cmp = df.groupby(new_prefix_cols).apply(lambda df_group: flatten_fn(df_group[grn_cols])).reset_index()
     
+    fn = FlattenFunction(flatten_fn, grn_cols)
+    df_cmp = df.groupby(new_prefix_cols).apply(fn).reset_index()
+
     df_recnum = df[target].value_counts().reset_index()
     df_recnum.columns = [target, sourceInTarget]
     
     df_cmpfinal = pd.merge(df_cmp, df_recnum, on = target)
     return df_cmpfinal, new_prefix_cols
 
-def convert_rfg_to_keyInrfg(data):
-    unique_labels, inverse_indices = np.unique(data, return_inverse=True)
-    result = np.zeros(len(data), dtype=int)
-    for i, label in enumerate(unique_labels):
-        mask = (inverse_indices == i)
-        result[mask] = np.arange(np.sum(mask))
-    return list(result)
-
-def add_sfx_as_new_locgrnseq_to_dfrec(df, SynFldGrn, SynFldVocab, sfx_list):
-    for sfx in sfx_list:
-        if sfx == 'rfg':
-            df[SynFldGrn+'_'+'rfg'] = df[SynFldGrn+'_'+'key'].apply(lambda x: [SynFldVocab['grn2rfg'][i] for i in x])
-        elif sfx == 'keyInrfg':
-            df[SynFldGrn+'_'+'keyInrfg'] = df[SynFldGrn+'_'+'rfg'].apply(lambda x: convert_rfg_to_keyInrfg(x))
-        elif sfx.replace('InCP', '') in df.columns:
-            df[SynFldGrn+'_'+sfx] = df.apply(lambda x: [x[sfx.replace('InCP', '')]] * len(x[SynFldGrn+'_'+'key']), axis = 1)
-        elif 'In' in sfx:
-            sourceInTarget = sfx
-            source, target = sourceInTarget.split('In')
-            df_st = df[[source, target]].drop_duplicates()
-            df_st[sourceInTarget] = df_st.groupby(target).cumcount()
-            df = pd.merge(df, df_st)
-            df[SynFldGrn+'_'+sourceInTarget] = df.apply(lambda x: [x[sourceInTarget]] * len(x[SynFldGrn+'_'+'key']), axis = 1)
-        
-    return df
-
-
-
+    
 def compress_dfrec_with_CompressArgs(df, CompressArgs, SynFldGrn, CkpdRecFltGrnCmp, SynFldVocab, method_to_fn):
     # earliest version of prefix_cols, this will be updated along the iteration.
     prefix_cols = [i for i in df.columns if 'Grn' not in i]
@@ -84,21 +72,20 @@ def compress_dfrec_with_CompressArgs(df, CompressArgs, SynFldGrn, CkpdRecFltGrnC
     df_compressed = df.rename(columns = d)
     return df_compressed
 
-def convert_df_compressed_to_DPLevel_tensor(df_cmp, SynFldVocabNew, 
-                                            CkpdRecFltGrnCmp, CkpdRecFltGrnCmpFeat, 
+    
+def convert_df_compressed_to_DPLevel_tensor(df_cmp, SynFldVocab, 
+                                            CkpdRecFltGrnCmp, 
                                             prefix_layer_cols, focal_layer_cols):
     df = df_cmp # .copy()
-    SynFldVocab = SynFldVocabNew
-    
-    df['CP'] = df['PID'].astype(str) + ':' + df['PredDT'].astype(str)
-    df = df.rename(columns = {'CP':'PDTID'})
-    
-    # convert key / rfg to keyidx / rfgidx
+
+    # CkpdRecFltGrnCmpFeat = 'Case.' + CkpdRecFltGrnCmp
+
     if CkpdRecFltGrnCmp+'_key' in df.columns:
-        df[CkpdRecFltGrnCmp+'_key'] = df[CkpdRecFltGrnCmp+'_key'].apply(lambda x: [SynFldVocab['grn2idx'][i] for i in x])
+        df[CkpdRecFltGrnCmp+'_key'] = df[CkpdRecFltGrnCmp+'_key'].apply(ConvertKey2ValueFunction(SynFldVocab['grn2idx']))
         df = df.rename(columns = {CkpdRecFltGrnCmp+'_key': CkpdRecFltGrnCmp+'_keyidx'})
+    
     if CkpdRecFltGrnCmp+'_rfg' in df.columns:
-        df[CkpdRecFltGrnCmp+'_rfg'] = df[CkpdRecFltGrnCmp+'_rfg'].apply(lambda x: [SynFldVocab['rfg2idx'][i] for i in x])
+        df[CkpdRecFltGrnCmp+'_rfg'] = df[CkpdRecFltGrnCmp+'_rfg'].apply(ConvertKey2ValueFunction(SynFldVocab['rfg2idx']))
         df = df.rename(columns = {CkpdRecFltGrnCmp+'_rfg': CkpdRecFltGrnCmp+'_rfgidx'})
 
     df_tensor = df
@@ -112,11 +99,38 @@ def convert_df_compressed_to_DPLevel_tensor(df_cmp, SynFldVocabNew,
         for recfldgrn_sfx in tensor_cols:
             df_dp = get_highorder_input_idx(df_tensor, recfldgrn_sfx, prefix_layer_cols, focal_layer_cols)
             df_list.append(df_dp)
-        df_tensor_fnl = reduce(lambda left, right: pd.merge(left, right), df_list)
+        df_tensor_fnl = reduce(MergeLeftAndRight(), df_list)
         
-    df_tensor_fnl.columns = [CkpdRecFltGrnCmpFeat + '_' + i.split('_')[-1] if 'Grn' in i else i for i in df_tensor_fnl.columns]
+    # df_tensor_fnl.columns = [CkpdRecFltGrnCmpFeat + '_' + i.split('_')[-1] if 'Grn' in i else i for i in df_tensor_fnl.columns]
+    df_tensor_fnl.columns = [CkpdRecFltGrnCmp + '_' + i.split('_')[-1] if 'Grn' in i else i for i in df_tensor_fnl.columns]
     df_tensor_fnl = df_tensor_fnl.reset_index(drop = True)
-    df_tensor_fnl['PID'] = df_tensor_fnl['PDTID'].apply(lambda x: int(x.split(':')[0]))
+    return df_tensor_fnl  
 
-    # print(SynRecFldGrn_FullRecName)
-    return df_tensor_fnl 
+
+def process_CONFIG_CMP_of_PDTInfoCRFT(Case_CRFT, CkpdRecFltTkn, CONFIG_CMP, UTILS_CMP, SynFldVocabNew):
+    PDTInfo = Case_CRFT.copy()
+    
+    Ckpd, RecName, FilterName, SynFldTkn = CkpdRecFltTkn.split('.')
+    
+    CompressArgs = CONFIG_CMP['CompressArgs']
+    prefix_layer_cols = CONFIG_CMP['prefix_layer_cols']
+    focal_layer_cols = CONFIG_CMP['focal_layer_cols']
+    method_to_fn = UTILS_CMP['method_to_fn'] 
+    
+    
+    CkpdRecFltTknCmp = get_CkpdRecFltTknCmp_Name(CkpdRecFltTkn, CompressArgs, prefix_layer_cols, focal_layer_cols)
+    
+    df_CkpdRecFltGrn = Case_CRFT[CkpdRecFltTkn].copy()
+    
+    # TODO: df_CkpdRecFltGrn might contains no ['PID', 'PredDT', 'DT', 'R']
+    # df_CkpdRecFltGrn = df_CkpdRecFltGrn.drop(columns = ['PID', 'PredDT', 'DT', 'R'])
+    df = df_CkpdRecFltGrn
+    df_cmp = compress_dfrec_with_CompressArgs(df, CompressArgs, SynFldTkn, CkpdRecFltTknCmp, SynFldVocabNew, method_to_fn)
+    df_tensor_fnl = convert_df_compressed_to_DPLevel_tensor(df_cmp, SynFldVocabNew, 
+                                                            CkpdRecFltTknCmp, 
+                                                            prefix_layer_cols, focal_layer_cols)
+    
+    PDTInfo[CkpdRecFltTknCmp] = df_tensor_fnl
+    Case_CRFTC = PDTInfo
+    return Case_CRFTC 
+

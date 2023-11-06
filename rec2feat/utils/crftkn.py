@@ -1,4 +1,15 @@
 import pandas as pd
+from recfldgrn.loadtools import get_df_bucket_from_settings
+from recfldgrn.datapoint import convert_PID_to_PIDgroup
+
+
+def get_group_info(Group, RecChain_ARGS, RecInfo_ARGS):
+    bucket_file = Group + '.p'
+    df = get_df_bucket_from_settings(bucket_file, RecChain_ARGS, RecInfo_ARGS)
+    df['Group'] = Group
+    # if type(PID_List) == list: df = df[df['PID'].isin(PID_List)].reset_index(drop = True)
+    return df
+
 
 def mapping_hour_to_MAEN(x):
     if x in [6,7,8,9,10,11]:
@@ -34,7 +45,6 @@ def add_RDTCalGrn(df, recfldgrn):
     df = df.drop(columns = [recfldgrn])
     return df
 
-
 def cat_SynFldGrn_from_RecFldGrn_List(df, SynFldGrn, RDTCal_rfg, RecFldGrn_List):
     if type(RDTCal_rfg) == str:
         RecFldGrn_List = RecFldGrn_List + [RDTCal_rfg] 
@@ -49,9 +59,9 @@ def cat_SynFldGrn_from_RecFldGrn_List(df, SynFldGrn, RDTCal_rfg, RecFldGrn_List)
     df['CP'] = 0
     DTRel_cols = ['CP', 'M', 'W', 'D', 'H', '5Min']
     DTRel_cols = [i for i in DTRel_cols if i in df.columns]
+    # print(DTRel_cols, df.columns)
     df = df[['PID', 'PredDT'] + DTRel_cols + ['DT', 'R'] + SynFldGrn_cols].reset_index(drop = True)
     return df
-
 
 def get_df_ckpdrecfltgrn(df_ckpdrecflt, GrnDBInfo, RecFldGrn_List, RDTCal_rfg, RecName, SynFldGrn):
     if type(df_ckpdrecflt) != type(pd.DataFrame()): return None
@@ -71,6 +81,7 @@ def get_df_ckpdrecfltgrn(df_ckpdrecflt, GrnDBInfo, RecFldGrn_List, RDTCal_rfg, R
     
     return df_ckpdrecfltgrn
 
+
 def generate_dfempty(PID, PredDT, CkpdRecFltGrn, UNK_TOKEN):
     RecGrnName = CkpdRecFltGrn.split('.')[-1]
     DTCal_cols = ['CP', 'M', 'W', 'D', 'H', '5Min']
@@ -80,23 +91,45 @@ def generate_dfempty(PID, PredDT, CkpdRecFltGrn, UNK_TOKEN):
     df = pd.DataFrame([d])
     return df
 
+def get_df_TknDB_of_PDTInfo(Case_CRF, SynFldGrn, CONFIG_PDT, CONFIG_TknDB, df_TknDB_Store, RANGE_SIZE):
 
-
-def convert_df_grnseq_to_flatten(df, SynFldGrn, SynFldVocab):
-    s = df.apply(lambda x: dict(zip(x[SynFldGrn +'_key'], x[SynFldGrn +'_wgt'])), axis = 1)
-    dfx = pd.DataFrame(s.to_list())
+    PDTInfo = Case_CRF.copy()
+    pdt_folder = CONFIG_PDT['pdt_folder']
+    PDTName = CONFIG_PDT['PDTName']
+    Group = convert_PID_to_PIDgroup(PDTInfo['PID'], RANGE_SIZE)
     
-    idx2grn = [i for i in SynFldVocab['idx2grn'] if i in dfx.columns]
-    prefix_cols = [i for i in df.columns if SynFldGrn not in i]
-    dfx = dfx[idx2grn].fillna(0)
-    dfx = pd.concat([df[prefix_cols], dfx], axis = 1)
-    return dfx, prefix_cols
+    # load variables
+    fldgrn_folder = CONFIG_TknDB['fldgrn_folder']
+    RecFldGrn_List = CONFIG_TknDB['RecFldGrn_List'] 
+    GrnSeqChain_ARGS = {'PID': {'folder': pdt_folder, 'RecName': PDTName}}
+    GrnSeqInfo_ARGS = {fld:  {'folder': fldgrn_folder,  'RecName': fld,  'Columns': 'ALL'} for fld in RecFldGrn_List}
+    
+    # check whether the group information is store in the df_RecBD_Store.
+    df_TknDB_v1 = df_TknDB_Store.get(SynFldGrn, pd.DataFrame(columns = ['PID', 'Group']))
+    if Group not in df_TknDB_v1['Group'].unique() : 
+        df_TknDB_v2 = get_group_info(Group, GrnSeqChain_ARGS, GrnSeqInfo_ARGS)
+        df_TknDB = pd.concat([df_TknDB_v1, df_TknDB_v2]).reset_index(drop = True)
+    else:
+        df_TknDB = df_TknDB_v1  
+        
+    df_TknDB_Store[SynFldGrn] = df_TknDB
+    return SynFldGrn, df_TknDB, df_TknDB_Store
 
-def convert_df_flatten_to_grnseq(df_flatten, SynFldGrn, SynFldVocab):
-    idx2grn = [i for i in SynFldVocab['idx2grn'] if i in df_flatten.columns]
-    dfx = df_flatten[[i for i in df_flatten.columns if i not in idx2grn]].reset_index(drop = True)
-    dfx[SynFldGrn] = df_flatten[idx2grn].apply(lambda x: x[x>0].to_dict(), axis = 1)
-    dfx[f'{SynFldGrn}_key'] = dfx[SynFldGrn].apply(lambda x: list(x.keys()))
-    dfx[f'{SynFldGrn}_wgt'] = dfx[SynFldGrn].apply(lambda x: list(x.values()))
-    dfx = dfx.drop(columns = [SynFldGrn])
-    return dfx
+
+def process_CONFIG_TknDB_of_PDTInfoCRF(Case_CRF, CkpdRecFltTkn, CONFIG_TknDB, df_TknDB_Store, UNK_TOKEN):
+    PDTInfo = Case_CRF.copy()
+    Ckpd, RecName, FilterName, SynFldGrn = CkpdRecFltTkn.split('.')
+    CkpdRecFlt = '.'.join([Ckpd, RecName, FilterName])
+
+    RecFldGrn_List = CONFIG_TknDB['RecFldGrn_List'] 
+    RDTCal_rfg = CONFIG_TknDB['RDTCal_rfg'] 
+
+    if type(PDTInfo[CkpdRecFlt]) == type(pd.DataFrame()):
+        df_TknDB = df_TknDB_Store[SynFldGrn]
+        P_TknDB = df_TknDB[df_TknDB['PID'] == PDTInfo['PID']].iloc[0]
+        PDTInfo[CkpdRecFltTkn] = get_df_ckpdrecfltgrn(PDTInfo[CkpdRecFlt], P_TknDB, RecFldGrn_List, RDTCal_rfg, RecName, SynFldGrn)
+    else:
+        PDTInfo[CkpdRecFltTkn] = generate_dfempty(PDTInfo['PID'], PDTInfo['PredDT'], CkpdRecFltTkn, UNK_TOKEN)
+    
+    Case_CRFT = PDTInfo
+    return Case_CRFT 
