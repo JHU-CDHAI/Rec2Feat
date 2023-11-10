@@ -5,22 +5,40 @@ from torch.utils.data import Dataset
 import pandas as pd
 from functools import reduce
 from ..utils.ckpdrec import get_df_RecDB_of_PDTInfo, process_CONFIG_CkpdRec_of_PDTInfo
+from collections import OrderedDict
+from .base import CRFTC_Base
 
-CACHE_NUM = 10
 
-class CkpdRecDataset(Dataset):
+class CkpdRecDataset(CRFTC_Base):
     # this might not be shared across different CkpdRecFltDataset instances.
     df_RecDB_Store = {}
     
-    def __init__(self, CDataset, CONFIG_PDT, CONFIG_RecDB, 
-                 RANGE_SIZE = None, CACHE_NUM = None):
+    def __init__(self, CDataset, CONFIG_PDT, CONFIG_RecDB, CaseDB_Path, 
+                 RANGE_SIZE = None, CACHE_NUM = None, CASE_CACHE_SIZE = None):
+        
+        
         self.CDataset = CDataset
         self.CONFIG_PDT = CONFIG_PDT
         self.CONFIG_RecDB = CONFIG_RecDB
-        self.RANGE_SIZE = RANGE_SIZE
         self.CACHE_NUM = CACHE_NUM
         self.CkpdName = CDataset.CkpdName
         self.CkpdRec = self.get_CkpdRec_Name()
+        
+        # must have
+        self.CaseDB_Path = CaseDB_Path
+        self.RANGE_SIZE = RANGE_SIZE
+        
+        # last dataset
+        self.LastDataset = self.CDataset
+        self.NameCRFTC = self.CkpdRec
+        
+        # cache part
+        self.cache_size = CASE_CACHE_SIZE
+        self.Cache_Store = OrderedDict()
+        
+        # db part
+        self.create_db_and_tables_done_list = []
+        
         
     def get_CkpdRec_Name(self):
         CkpdName = self.CDataset.CkpdName
@@ -28,11 +46,7 @@ class CkpdRecDataset(Dataset):
         CkpdRec = CkpdName + '.' + RecName
         return CkpdRec
     
-        
-    def __len__(self):
-        return len(self.CDataset)
-    
-    def __getitem__(self, index):
+    def excecute_case(self, index):
         Case_C = self.CDataset[index]
         
         # (1) update self.df_RecDB_Store and get df_RecDB
@@ -60,4 +74,3 @@ class CkpdRecDataset(Dataset):
             self.df_RecDB_Store[RecName] = df_RecDB
             
         return Case_CR
-    

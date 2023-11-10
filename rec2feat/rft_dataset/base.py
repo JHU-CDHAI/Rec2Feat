@@ -33,7 +33,7 @@ class CRFTC_Base(Dataset):
         self.CaseDB_Path = CaseDB_Path
         
         # LastDataset
-        self.LastDataset = self.df_PDT_all
+        self.LastDataset = None
         self.NameCRFTC = None
         
         # cache part
@@ -46,7 +46,7 @@ class CRFTC_Base(Dataset):
         
     def get_cache_case(self, index):
         # get the initial case
-        Case = self.LastDataset.iloc[index].copy()
+        Case = self.LastDataset[index].copy()
         pid, preddt = str(Case['PID']), str(Case['PredDT'])
         
         # get the name of CRFTC
@@ -74,10 +74,10 @@ class CRFTC_Base(Dataset):
         if cursor.fetchone(): return None
         
         cursor.execute(f'''
-            CREATE TABLE {NameCRFTC} (
-                PID TEXT,
-                PredDT TEXT,
-                {NameCRFTC} TEXT,
+            CREATE TABLE "{NameCRFTC}" (
+                "PID" TEXT,
+                "PredDT" TEXT,
+                "{NameCRFTC}" TEXT,
                 PRIMARY KEY (PID, PredDT)
             )
         ''')
@@ -87,7 +87,7 @@ class CRFTC_Base(Dataset):
         
     def get_db_case(self, index):
         # get the initial case
-        Case = self.LastDataset.iloc[index].copy()
+        Case = self.LastDataset[index].copy()
         pid, preddt = str(Case['PID']), str(Case['PredDT'])
         # get the name of CRFTC
         NameCRFTC = self.NameCRFTC
@@ -98,6 +98,9 @@ class CRFTC_Base(Dataset):
         db_directory = os.path.join(self.CaseDB_Path, NameCRFTC)
         db_path = os.path.join(self.CaseDB_Path, NameCRFTC, Group + '.db')
         os.makedirs(db_directory, exist_ok=True)
+        
+        # print(db_path)
+    
     
         # 2.2 Establish a connection to the SQLite DB file
         conn = sqlite3.connect(db_path)
@@ -109,7 +112,7 @@ class CRFTC_Base(Dataset):
         
         # 2.4 Prepare the SQL query to check if the entry exists
         query = f"""
-        SELECT * FROM {NameCRFTC} 
+        SELECT * FROM "{NameCRFTC}"
         WHERE PID = ? AND PredDT = ?
         """
         cursor.execute(query, (pid, preddt))
@@ -122,7 +125,9 @@ class CRFTC_Base(Dataset):
         if result is not None:
             # print(result)
             ValueCRFTC_json = result[-1] # NameCRFTC
-            ValueCRFTC = pd.read_json(ValueCRFTC_json, orient='split')
+            # print(ValueCRFTC_json)
+            ValueCRFTC = pd.read_json(ValueCRFTC_json, orient='split', convert_dates=True) \
+                                                        if ValueCRFTC_json is not None else None
             # get the case
             Case[NameCRFTC] = ValueCRFTC
             # update it to Cache
@@ -132,7 +137,7 @@ class CRFTC_Base(Dataset):
             Case = None
         return Case
     
-    
+
     def update_case_to_db_and_cache(self, Case):
         pid, preddt = str(Case['PID']), str(Case['PredDT'])
         NameCRFTC = list(Case.keys())[-1]
@@ -142,7 +147,8 @@ class CRFTC_Base(Dataset):
         self.Cache_Store = add_to_cache(self.Cache_Store, pid, preddt, ValueCRFTC, self.cache_size)
             
         # 3.3 write to the database
-        ValueCRFTC_json = ValueCRFTC.to_json(orient='split')
+        ValueCRFTC_json = ValueCRFTC.to_json(date_format='iso', orient='split') \
+                                                if ValueCRFTC is not None else None
         # print(ValueCRFTC_json)
         
         # 2. second check whether ValueCRFTC in Database or not?
@@ -151,6 +157,7 @@ class CRFTC_Base(Dataset):
         db_directory = os.path.join(self.CaseDB_Path, NameCRFTC)
         db_path = os.path.join(self.CaseDB_Path, NameCRFTC, Group + '.db')
         os.makedirs(db_directory, exist_ok=True)
+        # print(db_path)
     
         # 2.2 Establish a connection to the SQLite DB file
         conn = sqlite3.connect(db_path)
@@ -158,7 +165,7 @@ class CRFTC_Base(Dataset):
             
         # Insert the new entry into the database
         insert_query = f"""
-        INSERT INTO {NameCRFTC} (PID, PredDT, {NameCRFTC}) 
+        INSERT INTO "{NameCRFTC}" ("PID", "PredDT", "{NameCRFTC}") 
         VALUES (?, ?, ?)
         """
         # print(insert_query)
