@@ -56,7 +56,7 @@ def get_df_RecDB_of_PDTInfo(Case_C, CONFIG_PDT, CONFIG_RecDB, df_RecDB_Store, RA
 
 
 def get_CkpdName_RecTable(PDTInfo, CkpdName, DBInfo, RecNameTpt, cols = None):
-    CkptPeriod = PDTInfo[CkpdName]
+    CkptPeriod = PDTInfo[CkpdName].iloc[0]
 
     if RecNameTpt not in list(DBInfo.keys()): return None
     df = DBInfo[RecNameTpt]
