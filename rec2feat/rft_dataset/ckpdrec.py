@@ -29,6 +29,7 @@ class CkpdRecDataset(CRFTC_Base):
         self.RANGE_SIZE = RANGE_SIZE
         
         # last dataset
+        self.df_PDT_all = self.CDataset.df_PDT_all
         self.LastDataset = self.CDataset
         self.NameCRFTC = self.CkpdRec
         
@@ -39,15 +40,14 @@ class CkpdRecDataset(CRFTC_Base):
         # db part
         self.create_db_and_tables_done_list = []
         
-        
     def get_CkpdRec_Name(self):
         CkpdName = self.CDataset.CkpdName
         RecName =  self.CONFIG_RecDB['RecName']
         CkpdRec = CkpdName + '.' + RecName
         return CkpdRec
     
-    def excecute_case(self, index):
-        Case_C = self.CDataset[index]
+    def execute_case(self, index):
+        Case_C = self.LastDataset[index]
         
         # (1) update self.df_RecDB_Store and get df_RecDB
         RecName, df_RecDB, self.df_RecDB_Store = get_df_RecDB_of_PDTInfo(
@@ -59,9 +59,9 @@ class CkpdRecDataset(CRFTC_Base):
         
         # (2) load PDTInfo_CkpdRecFlt
         Case_CR = process_CONFIG_CkpdRec_of_PDTInfo(Case_C, 
-                                                           self.CkpdName, 
-                                                           self.CONFIG_RecDB, 
-                                                           self.df_RecDB_Store)
+                                                   self.CkpdName, 
+                                                   self.CONFIG_RecDB, 
+                                                   self.df_RecDB_Store)
         
         # (3) adjust size of df_RecDB
         Group_List = list(df_RecDB['Group'].unique())
@@ -74,3 +74,33 @@ class CkpdRecDataset(CRFTC_Base):
             self.df_RecDB_Store[RecName] = df_RecDB
             
         return Case_CR
+    
+    def __getitem__(self, index):
+        # print('conduct get_cache_case')
+        # Case = self.get_cache_case(index)
+        # if Case is not None: 
+        #     print('conduct get_cache_case success')
+        #     return Case
+    
+        # Case = self.get_bucket_case(index)
+        # if Case is not None: 
+        #     self.add_to_cache(Case)
+        #     return Case
+        
+        # print('conduct get_db_case')
+        Case = self.get_db_case(index)
+        if Case is not None: 
+            # self.add_to_cache(Case)
+            # print('conduct add_to_cache')
+            return Case
+    
+        # print('conduct execute_case')
+        Case = self.execute_case(index)
+        # execute done: add cache
+        # print('conduct add_to_cache')
+        # self.add_to_cache(Case)
+        # execute done: add db
+        # print('conduct add_to_db')
+        self.add_to_db(Case)
+        return Case
+    
