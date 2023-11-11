@@ -10,6 +10,7 @@ def get_group_info(Group, RecChain_ARGS, RecInfo_ARGS):
     # if type(PID_List) == list: df = df[df['PID'].isin(PID_List)].reset_index(drop = True)
     return df
 
+
 def get_df_RecDB_of_PDTInfo(Case_C, CONFIG_PDT, CONFIG_RecDB, df_RecDB_Store, RANGE_SIZE):
 
     # CONFIG_RecDB = CONFIG_CkpdRecNameFlt['CONFIG_RecDB']
@@ -91,7 +92,7 @@ def process_CONFIG_CkpdRec_of_PDTInfo(Case_C, CkpdName, CONFIG_RecDB,
                                              df_RecDB_Store):
     
     PDTInfo = Case_C.copy()
-
+    
     # -------- 2. CkpdName.RecName
     RecName =  CONFIG_RecDB['RecName']
     RecNameTpt =  CONFIG_RecDB['RecNameTpt']

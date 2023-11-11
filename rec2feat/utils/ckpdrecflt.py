@@ -55,7 +55,11 @@ def process_CONFIG_CkpdRecFlt_of_PDTInfo(Case_CR, CkpdRec, CONFIG_Flt, UTILS_Flt
     
     CkpdRecFlt = CkpdRec + '.' + FilterName
     PredDT = PDTInfo['PredDT']
-    PDTInfo[CkpdRecFlt] = filter_CkpdRec_fn(PredDT, PDTInfo[CkpdRec], **CkpdRecFilter_ARGS)
+    
+    if FilterName == 'Whl': 
+        PDTInfo[CkpdRecFlt] = PDTInfo[CkpdRec]
+    else:
+        PDTInfo[CkpdRecFlt] = filter_CkpdRec_fn(PredDT, PDTInfo[CkpdRec], **CkpdRecFilter_ARGS)
     
     Case_CRF = PDTInfo
     return Case_CRF

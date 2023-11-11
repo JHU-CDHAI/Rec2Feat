@@ -35,7 +35,7 @@ def compress_df_flatten_with_cmpfn(df_flatten, sourceInTarget, flatten_fn, prefi
     df_cmpfinal = pd.merge(df_cmp, df_recnum, on = target)
     return df_cmpfinal, new_prefix_cols
 
-    
+
 def compress_dfrec_with_CompressArgs(df, CompressArgs, SynFldGrn, CkpdRecFltGrnCmp, SynFldVocab, method_to_fn):
     # earliest version of prefix_cols, this will be updated along the iteration.
     prefix_cols = [i for i in df.columns if 'Grn' not in i]
@@ -72,12 +72,11 @@ def compress_dfrec_with_CompressArgs(df, CompressArgs, SynFldGrn, CkpdRecFltGrnC
     df_compressed = df.rename(columns = d)
     return df_compressed
 
-    
+
 def convert_df_compressed_to_DPLevel_tensor(df_cmp, SynFldVocab, 
                                             CkpdRecFltGrnCmp, 
                                             prefix_layer_cols, focal_layer_cols):
     df = df_cmp # .copy()
-
     # CkpdRecFltGrnCmpFeat = 'Case.' + CkpdRecFltGrnCmp
 
     if CkpdRecFltGrnCmp+'_key' in df.columns:
@@ -103,12 +102,14 @@ def convert_df_compressed_to_DPLevel_tensor(df_cmp, SynFldVocab,
         
     # df_tensor_fnl.columns = [CkpdRecFltGrnCmpFeat + '_' + i.split('_')[-1] if 'Grn' in i else i for i in df_tensor_fnl.columns]
     df_tensor_fnl.columns = [CkpdRecFltGrnCmp + '_' + i.split('_')[-1] if 'Grn' in i else i for i in df_tensor_fnl.columns]
+    
     df_tensor_fnl = df_tensor_fnl.reset_index(drop = True)
-    return df_tensor_fnl  
+    return df_tensor_fnl 
 
 
 def process_CONFIG_CMP_of_PDTInfoCRFT(Case_CRFT, CkpdRecFltTkn, CONFIG_CMP, UTILS_CMP, SynFldVocabNew):
     PDTInfo = Case_CRFT.copy()
+    PID, PredDT = Case_CRFT['PID'], Case_CRFT['PredDT']
     
     Ckpd, RecName, FilterName, SynFldTkn = CkpdRecFltTkn.split('.')
     
@@ -130,6 +131,8 @@ def process_CONFIG_CMP_of_PDTInfoCRFT(Case_CRFT, CkpdRecFltTkn, CONFIG_CMP, UTIL
                                                             CkpdRecFltTknCmp, 
                                                             prefix_layer_cols, focal_layer_cols)
     
+    df_tensor_fnl['PID'] = PID
+    df_tensor_fnl['PredDT'] = PredDT
     PDTInfo[CkpdRecFltTknCmp] = df_tensor_fnl
     Case_CRFTC = PDTInfo
     return Case_CRFTC 
