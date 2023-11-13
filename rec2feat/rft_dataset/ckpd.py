@@ -11,13 +11,17 @@ class DT2Dataset:
         return len(self.df)
 
 class CkpdDataset(CRFTC_Base):
-    def __init__(self, df_PDT_all, CONFIG_Ckpd, CaseDB_Path, RANGE_SIZE, CASE_CACHE_SIZE):
+    def __init__(self, df_PDT_all, CONFIG_Ckpd, 
+                 CaseDB_Path, CRFTC_RANGE_SIZE, CASE_CACHE_SIZE, 
+                 use_db, use_cache = False, **kwargs):
         self.CONFIG_Ckpd = CONFIG_Ckpd
         self.CkpdName = self.get_CkpdName()
         
         # must have
-        self.RANGE_SIZE = RANGE_SIZE
+        self.CRFTC_RANGE_SIZE = CRFTC_RANGE_SIZE
         self.CaseDB_Path = CaseDB_Path
+        self.use_db = use_db
+        self.use_cache = use_cache
         
         # LastDataset
         self.df_PDT_all = df_PDT_all
@@ -35,37 +39,5 @@ class CkpdDataset(CRFTC_Base):
     def execute_case(self, index):
         # pay attention here, when doing execute, we use LastDataset. 
         Case = self.LastDataset[index].copy()
-        # ----------------
         Case = process_CONFIG_Ckpd_of_PDTInfo(Case, self.CONFIG_Ckpd)
-        # -----------------
-        return Case
-    
-    
-    def __getitem__(self, index):
-        # print('conduct get_cache_case')
-        # Case = self.get_cache_case(index)
-        # if Case is not None: 
-        #     print('conduct get_cache_case success')
-        #     return Case
-    
-        # Case = self.get_bucket_case(index)
-        # if Case is not None: 
-        #     self.add_to_cache(Case)
-        #     return Case
-        
-        # print('conduct get_db_case')
-        Case = self.get_db_case(index)
-        if Case is not None: 
-            # self.add_to_cache(Case)
-            # print('conduct add_to_cache')
-            return Case
-    
-        # print('conduct execute_case')
-        Case = self.execute_case(index)
-        # execute done: add cache
-        # print('conduct add_to_cache')
-        # self.add_to_cache(Case)
-        # execute done: add db
-        # print('conduct add_to_db')
-        self.add_to_db(Case)
         return Case

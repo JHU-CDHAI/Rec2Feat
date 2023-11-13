@@ -7,24 +7,30 @@ from collections import OrderedDict
 class CkpdRecFltTknDataset(CRFTC_Base):
 
     df_TknDB_Store = {}
-
-    def __init__(self, CRFDataset, CONFIG_TknDB, CaseDB_Path, UNK_TOKEN, RANGE_SIZE, CASE_CACHE_SIZE):
+    def __init__(self, CRFDataset, CONFIG_TknDB, 
+                 CaseDB_Path, CRFTC_RANGE_SIZE, CASE_CACHE_SIZE,
+                 GROUP_RANGE_SIZE, GROUP_CACHE_NUM, UNK_TOKEN,
+                 use_db, use_cache = False,  **kwargs):
+        
         self.CRFDataset = CRFDataset
         self.CONFIG_PDT = CRFDataset.CRDataset.CONFIG_PDT
-        # self.CONFIG_CkpdRecNameFlt = CRFDataset.CONFIG_CkpdRecNameFlt
         self.CONFIG_TknDB = CONFIG_TknDB
-        self.RANGE_SIZE = CRFDataset.CRDataset.RANGE_SIZE
-        self.CACHE_NUM = CRFDataset.CRDataset.CACHE_NUM
+        
         self.UNK_TOKEN = UNK_TOKEN # TODO: update to special token list in the future
+        
+        
+        self.GROUP_CACHE_NUM = GROUP_CACHE_NUM
+        self.GROUP_RANGE_SIZE = GROUP_RANGE_SIZE
         
         self.SynFldVocab = self.get_SynFldVocab()
         self.SynFldGrn, self.CkpdRecFltTkn = self.get_CkpdRecFltTkn_Name()
         
-        # this might not be shared across different CkpdRecFltDataset instances.
         
         # must have
         self.CaseDB_Path = CaseDB_Path
-        self.RANGE_SIZE = RANGE_SIZE
+        self.CRFTC_RANGE_SIZE = CRFTC_RANGE_SIZE
+        self.use_db = use_db
+        self.use_cache = use_cache
         
         # last dataset
         self.df_PDT_all = self.CRFDataset.df_PDT_all
@@ -50,7 +56,9 @@ class CkpdRecFltTknDataset(CRFTC_Base):
         RDTCal_rfg = self.CONFIG_TknDB['RDTCal_rfg'] 
         SynFldVocab = build_SynFldVocab(fldgrnv_folder, RecFldGrn_List, RDTCal_rfg, self.UNK_TOKEN) 
         return SynFldVocab
-    
+        
+    def __len__(self):
+        return len(self.CRFDataset)
     
     def execute_case(self, index):
         
@@ -62,7 +70,7 @@ class CkpdRecFltTknDataset(CRFTC_Base):
                                                                            self.CONFIG_PDT, 
                                                                            self.CONFIG_TknDB, 
                                                                            self.df_TknDB_Store, 
-                                                                           self.RANGE_SIZE)
+                                                                           self.GROUP_RANGE_SIZE)
 
 
         # (2) load PDTInfo_CkpdRecFlt
@@ -73,10 +81,9 @@ class CkpdRecFltTknDataset(CRFTC_Base):
                                                        self.UNK_TOKEN)
 
         
-    
         # (3) adjust size of df_RecDB
         Group_List = list(df_TknDB['Group'].unique())
-        if len(Group_List) >= self.CACHE_NUM:
+        if len(Group_List) >= self.GROUP_CACHE_NUM:
             first_Group = df_TknDB.iloc[0]['Group']
             last_Group = df_TknDB.iloc[-1]['Group']
             Groups_to_keep = [i for i in Group_List if i not in [first_Group, last_Group]][1:] + [last_Group]
@@ -86,31 +93,4 @@ class CkpdRecFltTknDataset(CRFTC_Base):
             
         return Case_CRFT
     
-    def __getitem__(self, index):
-        # print('conduct get_cache_case')
-        # Case = self.get_cache_case(index)
-        # if Case is not None: 
-        #     print('conduct get_cache_case success')
-        #     return Case
     
-        # Case = self.get_bucket_case(index)
-        # if Case is not None: 
-        #     self.add_to_cache(Case)
-        #     return Case
-        
-        # print('conduct get_db_case')
-        Case = self.get_db_case(index)
-        if Case is not None: 
-            # self.add_to_cache(Case)
-            # print('conduct add_to_cache')
-            return Case
-    
-        # print('conduct execute_case')
-        Case = self.execute_case(index)
-        # execute done: add cache
-        # print('conduct add_to_cache')
-        # self.add_to_cache(Case)
-        # execute done: add db
-        # print('conduct add_to_db')
-        self.add_to_db(Case)
-        return Case
