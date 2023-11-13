@@ -4,7 +4,7 @@ def get_Ckpd_from_PredDT(PID, PredDT, DistStartToPredDT, DistEndToPredDT, TimeUn
     assert TimeUnit in ['H', 'D', 'min']
     DT_s = PredDT + pd.to_timedelta(DistStartToPredDT, unit = TimeUnit)
     DT_e = PredDT + pd.to_timedelta(DistEndToPredDT, unit = TimeUnit)
-    return pd.DataFrame([{'PID': PID, 'PredDT': PredDT, 'DT_s': DT_s, 'DT_e':DT_e}])
+    return pd.DataFrame([{'PID': PID, 'PredDT': PredDT, 'DT_start': DT_s, 'DT_end':DT_e}])
 
 def process_CONFIG_Ckpd_of_PDTInfo(Case, CONFIG_Ckpd):
     PDTInfo = Case.copy()

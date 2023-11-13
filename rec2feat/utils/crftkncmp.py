@@ -73,8 +73,7 @@ def compress_dfrec_with_CompressArgs(df, CompressArgs, SynFldGrn, CkpdRecFltGrnC
     return df_compressed
 
 
-def convert_df_compressed_to_DPLevel_tensor(df_cmp, SynFldVocab, 
-                                            CkpdRecFltGrnCmp, 
+def convert_df_compressed_to_DPLevel_tensor(df_cmp, SynFldVocab, CkpdRecFltGrnCmp, 
                                             prefix_layer_cols, focal_layer_cols):
     df = df_cmp # .copy()
     # CkpdRecFltGrnCmpFeat = 'Case.' + CkpdRecFltGrnCmp
@@ -108,23 +107,21 @@ def convert_df_compressed_to_DPLevel_tensor(df_cmp, SynFldVocab,
 
 
 def process_CONFIG_CMP_of_PDTInfoCRFT(Case_CRFT, CkpdRecFltTkn, CONFIG_CMP, UTILS_CMP, SynFldVocabNew):
-    PDTInfo = Case_CRFT.copy()
+    PDTInfo = Case_CRFT# .copy()
     PID, PredDT = Case_CRFT['PID'], Case_CRFT['PredDT']
     
     Ckpd, RecName, FilterName, SynFldTkn = CkpdRecFltTkn.split('.')
     
     CompressArgs = CONFIG_CMP['CompressArgs']
-    prefix_layer_cols = CONFIG_CMP['prefix_layer_cols']
-    focal_layer_cols = CONFIG_CMP['focal_layer_cols']
+    prefix_layer_cols = CONFIG_CMP['Layer_Args']['prefix_layer_cols']
+    focal_layer_cols = CONFIG_CMP['Layer_Args']['focal_layer_cols']
     method_to_fn = UTILS_CMP['method_to_fn'] 
     
     
     CkpdRecFltTknCmp = get_CkpdRecFltTknCmp_Name(CkpdRecFltTkn, CompressArgs, prefix_layer_cols, focal_layer_cols)
-    
-    df_CkpdRecFltGrn = Case_CRFT[CkpdRecFltTkn].copy()
-    
+    df_CkpdRecFltGrn = Case_CRFT[CkpdRecFltTkn]# .copy()
     # TODO: df_CkpdRecFltGrn might contains no ['PID', 'PredDT', 'DT', 'R']
-    # df_CkpdRecFltGrn = df_CkpdRecFltGrn.drop(columns = ['PID', 'PredDT', 'DT', 'R'])
+    df_CkpdRecFltGrn = df_CkpdRecFltGrn.drop(columns = ['PID', 'PredDT', 'DT', 'R'])
     df = df_CkpdRecFltGrn
     df_cmp = compress_dfrec_with_CompressArgs(df, CompressArgs, SynFldTkn, CkpdRecFltTknCmp, SynFldVocabNew, method_to_fn)
     df_tensor_fnl = convert_df_compressed_to_DPLevel_tensor(df_cmp, SynFldVocabNew, 
@@ -133,6 +130,7 @@ def process_CONFIG_CMP_of_PDTInfoCRFT(Case_CRFT, CkpdRecFltTkn, CONFIG_CMP, UTIL
     
     df_tensor_fnl['PID'] = PID
     df_tensor_fnl['PredDT'] = PredDT
+    df_tensor_fnl = df_tensor_fnl.drop(columns = ['CP'])
     PDTInfo[CkpdRecFltTknCmp] = df_tensor_fnl
     Case_CRFTC = PDTInfo
     return Case_CRFTC 

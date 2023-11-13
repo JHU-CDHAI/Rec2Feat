@@ -63,12 +63,16 @@ def convert_rfg_to_keyInrfg(data):
 
 def add_sfx_as_new_locgrnseq_to_dfrec(df, SynFldGrn, SynFldVocab, sfx_list):
     for sfx in sfx_list:
+        
         if sfx == 'rfg':
             df[SynFldGrn+'_'+'rfg'] = df[SynFldGrn+'_'+'key'].apply(ConvertKey2ValueFunction(SynFldVocab['grn2rfg']))
+        
         elif sfx == 'keyInrfg':
             df[SynFldGrn+'_'+'keyInrfg'] = df[SynFldGrn+'_'+'rfg'].apply(convert_rfg_to_keyInrfg)
+        
         elif sfx.replace('InCP', '') in df.columns:
             df[SynFldGrn+'_'+sfx] = df.apply(GenerateFldTknLocIdx(sfx.replace('InCP', ''), SynFldGrn), axis = 1)
+        
         elif 'In' in sfx:
             sourceInTarget = sfx
             source, target = sourceInTarget.split('In')
@@ -76,6 +80,8 @@ def add_sfx_as_new_locgrnseq_to_dfrec(df, SynFldGrn, SynFldVocab, sfx_list):
             df_st[sourceInTarget] = df_st.groupby(target).cumcount()
             df = pd.merge(df, df_st)
             df[SynFldGrn+'_'+sourceInTarget] = df.apply(GenerateFldTknLocIdx(sourceInTarget, SynFldGrn), axis = 1)
+            df = df.drop(columns = [sourceInTarget])
+        
     return df
 
 def convert_df_grnseq_to_flatten(df, SynFldGrn, SynFldVocab):

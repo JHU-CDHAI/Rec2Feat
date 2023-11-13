@@ -1,7 +1,7 @@
 import pandas as pd
 from recfldgrn.loadtools import get_df_bucket_from_settings
 from recfldgrn.datapoint import convert_PID_to_PIDgroup
-
+from .ckpdrecflt import add_RelativeDT_to_dfCkpdRec
 
 def get_group_info(Group, RecChain_ARGS, RecInfo_ARGS):
     bucket_file = Group + '.p'
@@ -46,6 +46,8 @@ def add_RDTCalGrn(df, recfldgrn):
     return df
 
 def cat_SynFldGrn_from_RecFldGrn_List(df, SynFldGrn, RDTCal_rfg, RecFldGrn_List):
+    PredDT = df['PredDT'].iloc[0]
+    df = add_RelativeDT_to_dfCkpdRec(df, PredDT)
     if type(RDTCal_rfg) == str:
         RecFldGrn_List = RecFldGrn_List + [RDTCal_rfg] 
     
@@ -92,7 +94,7 @@ def generate_dfempty(PID, PredDT, CkpdRecFltGrn, UNK_TOKEN):
 
 def get_df_TknDB_of_PDTInfo(Case_CRF, SynFldGrn, CONFIG_PDT, CONFIG_TknDB, df_TknDB_Store, RANGE_SIZE):
 
-    PDTInfo = Case_CRF.copy()
+    PDTInfo = Case_CRF# .copy()
     pdt_folder = CONFIG_PDT['pdt_folder']
     PDTName = CONFIG_PDT['PDTName']
     Group = convert_PID_to_PIDgroup(PDTInfo['PID'], RANGE_SIZE)
@@ -116,7 +118,7 @@ def get_df_TknDB_of_PDTInfo(Case_CRF, SynFldGrn, CONFIG_PDT, CONFIG_TknDB, df_Tk
 
 
 def process_CONFIG_TknDB_of_PDTInfoCRF(Case_CRF, CkpdRecFltTkn, CONFIG_TknDB, df_TknDB_Store, UNK_TOKEN):
-    PDTInfo = Case_CRF.copy()
+    PDTInfo = Case_CRF# .copy()
     Ckpd, RecName, FilterName, SynFldGrn = CkpdRecFltTkn.split('.')
     CkpdRecFlt = '.'.join([Ckpd, RecName, FilterName])
 
@@ -126,10 +128,13 @@ def process_CONFIG_TknDB_of_PDTInfoCRF(Case_CRF, CkpdRecFltTkn, CONFIG_TknDB, df
     if type(PDTInfo[CkpdRecFlt]) == type(pd.DataFrame()):
         df_TknDB = df_TknDB_Store[SynFldGrn]
         P_TknDB = df_TknDB[df_TknDB['PID'] == PDTInfo['PID']].iloc[0]
-        PDTInfo[CkpdRecFltTkn] = get_df_ckpdrecfltgrn(PDTInfo[CkpdRecFlt], P_TknDB, RecFldGrn_List, RDTCal_rfg, RecName, SynFldGrn)
+        CRFTCValue = get_df_ckpdrecfltgrn(PDTInfo[CkpdRecFlt], P_TknDB, RecFldGrn_List, RDTCal_rfg, RecName, SynFldGrn)
     else:
-        PDTInfo[CkpdRecFltTkn] = generate_dfempty(PDTInfo['PID'], PDTInfo['PredDT'], CkpdRecFltTkn, UNK_TOKEN)
-    
+        CRFTCValue = generate_dfempty(PDTInfo['PID'], PDTInfo['PredDT'], CkpdRecFltTkn, UNK_TOKEN)
+
+    # PDTInfo[CkpdRecFltTkn] = CRFTCValue.drop(columns = ['DT', 'R'])
+    PDTInfo[CkpdRecFltTkn] = CRFTCValue
     Case_CRFT = PDTInfo
+    
     return Case_CRFT 
 
