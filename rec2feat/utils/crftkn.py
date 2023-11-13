@@ -81,7 +81,6 @@ def get_df_ckpdrecfltgrn(df_ckpdrecflt, GrnDBInfo, RecFldGrn_List, RDTCal_rfg, R
     
     return df_ckpdrecfltgrn
 
-
 def generate_dfempty(PID, PredDT, CkpdRecFltGrn, UNK_TOKEN):
     RecGrnName = CkpdRecFltGrn.split('.')[-1]
     DTCal_cols = ['CP', 'M', 'W', 'D', 'H', '5Min']
