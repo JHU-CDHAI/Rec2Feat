@@ -9,47 +9,76 @@ from .ckpdrecflt import CkpdRecFltDataset
 from .crftkn import CkpdRecFltTknDataset
 from .crftkncmp import CkpdRecFltTknCmpDataset
 
-def load_CRFTC_Dataset(df_PDT_all, CONFIG_PDT, CONFIG_CRFTC, CaseDB_Path, 
-                       RANGE_SIZE, CACHE_NUM, UNK_TOKEN, UTILS_Flt, UTILS_CMP, CASE_CACHE_SIZE):
-    CONFIG_Ckpd = CONFIG_CRFTC['CONFIG_Ckpd']
-    CDataset = CkpdDataset(df_PDT_all, CONFIG_Ckpd, CaseDB_Path, RANGE_SIZE, CASE_CACHE_SIZE)
-    if 'CONFIG_RecDB' not in CONFIG_CRFTC: return CDataset
-
-    CONFIG_RecDB = CONFIG_CRFTC['CONFIG_RecDB']
-    CRDataset = CkpdRecDataset(CDataset, CONFIG_PDT, CONFIG_RecDB, CaseDB_Path, RANGE_SIZE, CACHE_NUM, CASE_CACHE_SIZE)
-    if 'CONFIG_Flt' not in CONFIG_CRFTC: return CRDataset
-
-    CONFIG_Flt = CONFIG_CRFTC['CONFIG_Flt']
-    CRFDataset = CkpdRecFltDataset(CRDataset, CONFIG_Flt, UTILS_Flt, CaseDB_Path, RANGE_SIZE, CASE_CACHE_SIZE)
-    if 'CONFIG_TknDB' not in CONFIG_CRFTC: return CRFDataset
+def load_CRFTC_Dataset(df_PDT_all, 
+                       CONFIG_PDT, 
+                       CONFIG_CRFTC, CONFIG_CRFTC_RANGE_SIZE, CONFIG_CRFTC_usedb, 
+                       DS_ARGS_Template, 
+                       UTILS_Flt,
+                       UTILS_CMP):
     
-    CONFIG_TknDB = CONFIG_CRFTC['CONFIG_TknDB']
-    CRFTDataset = CkpdRecFltTknDataset(CRFDataset, CONFIG_TknDB, CaseDB_Path, UNK_TOKEN, RANGE_SIZE, CASE_CACHE_SIZE)
-    if 'CONFIG_CMP' not in CONFIG_CRFTC: return CRFTDataset
+    # Ckpd
+    DS_ARGS = DS_ARGS_Template.copy()
+    DS_ARGS['use_db'] = CONFIG_CRFTC_usedb['Ckpd'] # False
+    DS_ARGS['CRFTC_RANGE_SIZE'] = CONFIG_CRFTC_RANGE_SIZE['Ckpd']
+    CONFIG_Ckpd = CONFIG_CRFTC['Ckpd']
+    CDataset = CkpdDataset(df_PDT_all, CONFIG_Ckpd, **DS_ARGS)
+    if 'RecDB' not in CONFIG_CRFTC: return CDataset
 
-    CONFIG_CMP = CONFIG_CRFTC['CONFIG_CMP']
-    CRFTCDataset = CkpdRecFltTknCmpDataset(CRFTDataset, CONFIG_CMP, UTILS_CMP, CaseDB_Path, RANGE_SIZE, CASE_CACHE_SIZE)
+    # RecDB
+    DS_ARGS = DS_ARGS_Template.copy()
+    DS_ARGS['use_db'] = CONFIG_CRFTC_usedb['RecDB'] 
+    DS_ARGS['CRFTC_RANGE_SIZE'] = CONFIG_CRFTC_RANGE_SIZE['RecDB']
+    CONFIG_RecDB = CONFIG_CRFTC['RecDB']
+    CRDataset = CkpdRecDataset(CDataset, CONFIG_PDT, CONFIG_RecDB, **DS_ARGS)
+    if 'Flt' not in CONFIG_CRFTC: return CRDataset
+
+    DS_ARGS = DS_ARGS_Template.copy()
+    DS_ARGS['use_db'] = CONFIG_CRFTC_usedb['Flt'] 
+    DS_ARGS['CRFTC_RANGE_SIZE'] = CONFIG_CRFTC_RANGE_SIZE['Flt']
+    CONFIG_Flt = CONFIG_CRFTC['Flt']
+    CRFDataset = CkpdRecFltDataset(CRDataset, CONFIG_Flt, UTILS_Flt, **DS_ARGS)
+    if 'TknDB' not in CONFIG_CRFTC: return CRFDataset
+    
+    DS_ARGS = DS_ARGS_Template.copy()
+    DS_ARGS['use_db'] = CONFIG_CRFTC_usedb['TknDB'] 
+    DS_ARGS['CRFTC_RANGE_SIZE'] = CONFIG_CRFTC_RANGE_SIZE['TknDB']
+    CONFIG_TknDB = CONFIG_CRFTC['TknDB']
+    CRFTDataset = CkpdRecFltTknDataset(CRFDataset, CONFIG_TknDB, **DS_ARGS)
+    if 'CMP' not in CONFIG_CRFTC: return CRFTDataset
+
+    DS_ARGS = DS_ARGS_Template.copy()
+    DS_ARGS['use_db'] = CONFIG_CRFTC_usedb['CMP'] 
+    DS_ARGS['CRFTC_RANGE_SIZE'] = CONFIG_CRFTC_RANGE_SIZE['CMP']
+    CONFIG_CMP = CONFIG_CRFTC['CMP']
+    CRFTCDataset = CkpdRecFltTknCmpDataset(CRFTDataset, CONFIG_CMP, UTILS_CMP, **DS_ARGS)
     return CRFTCDataset
 
 
 class MultiCRFTCDataset(Dataset):
-    def __init__(self, df_PDT_all, 
+    def __init__(self, 
+                 df_PDT_all, 
                  CONFIG_PDT, 
                  CONFIG_CRFTC_List, 
-                 CaseDB_Path, **HYPER_DICT):
+                 DS_ARGS_Template, 
+                 UTILS_Flt, UTILS_CMP):
         
         self.df_PDT_all = df_PDT_all
         self.CONFIG_PDT = CONFIG_PDT
-        self.CaseDB_Path = CaseDB_Path
         self.CONFIG_CRFTC_List = CONFIG_CRFTC_List
-        
-        self.RANGE_SIZE = HYPER_DICT['RANGE_SIZE']
-        self.CACHE_NUM = HYPER_DICT['CACHE_NUM']
-        self.UTILS_Flt = HYPER_DICT['UTILS_Flt']
+        self.UTILS_Flt = UTILS_Flt
+        self.UTILS_CMP = UTILS_CMP
         
         self.NameCRFTC_To_Dataset = {}
-        for CONFIG_CRFTC in CONFIG_CRFTC_List:
-            Dataset = load_CRFTC_Dataset(df_PDT_all, CONFIG_PDT, CONFIG_CRFTC, CaseDB_Path, **HYPER_DICT)
+        for crftc_tuple in CONFIG_CRFTC_List:
+            CONFIG_CRFTC, CONFIG_CRFTC_RANGE_SIZE, CONFIG_CRFTC_usedb = crftc_tuple
+            Dataset = load_CRFTC_Dataset(df_PDT_all, 
+                                         CONFIG_PDT,
+                                         CONFIG_CRFTC, 
+                                         CONFIG_CRFTC_RANGE_SIZE, 
+                                         CONFIG_CRFTC_usedb, 
+                                         DS_ARGS_Template,
+                                         UTILS_Flt,
+                                         UTILS_CMP)
             NameCRFTC = Dataset.NameCRFTC
             self.NameCRFTC_To_Dataset[NameCRFTC] = Dataset
     
@@ -71,3 +100,4 @@ class MultiCRFTCDataset(Dataset):
     
     def __len__(self):
         return len(self.df_PDT_all)
+    
