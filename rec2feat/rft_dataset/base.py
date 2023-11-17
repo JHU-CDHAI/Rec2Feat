@@ -61,7 +61,7 @@ class CRFTC_Base(Dataset):
     def get_db_case(self, index):
         # Copy the case data from the main DataFrame using the provided index
         Case = self.df_PDT_all.iloc[index].copy()
-        pid, preddt = Case['PID'], Case['PredDT']
+        pid, preddt = Case['PID'], Case['PredDT'].strftime('%Y-%m-%d %H:%M:%S')
         NameCRFTC = self.NameCRFTC
 
         # Determine the group and set file paths for the database and info
@@ -77,7 +77,7 @@ class CRFTC_Base(Dataset):
         conn = sqlite3.connect(info_path)
         try:
             info_query = f'''SELECT * FROM "Table" WHERE PID = ? AND PredDT = ?'''
-            df_case_info = pd.read_sql_query(info_query, conn, params=(pid, str(preddt)))
+            df_case_info = pd.read_sql_query(info_query, conn, params=(pid, preddt))
         except:
             df_case_info = pd.DataFrame()
         conn.close()
@@ -94,7 +94,7 @@ class CRFTC_Base(Dataset):
         try:
             # Prepare and execute the query to fetch CRFTC values for the case
             CRFTC_query = f'''SELECT * FROM "Table" WHERE PID = ? AND PredDT = ?'''
-            CRFTCValue = pd.read_sql_query(CRFTC_query, conn, params=(pid, str(preddt)))
+            CRFTCValue = pd.read_sql_query(CRFTC_query, conn, params=(pid, preddt))
         except:
             CRFTCValue = pd.DataFrame()
         conn.close()
@@ -116,7 +116,7 @@ class CRFTC_Base(Dataset):
     
     def add_to_db(self, Case):
         Case = Case.copy()
-        pid, preddt = Case['PID'], str(Case['PredDT'])
+        pid, preddt = Case['PID'], Case['PredDT'].strftime('%Y-%m-%d %H:%M:%S')
 
         # Retrieve the name of the CRFTC field from the class instance
         NameCRFTC = self.NameCRFTC
@@ -137,7 +137,7 @@ class CRFTC_Base(Dataset):
         conn = sqlite3.connect(info_path)
         info_query = f'''SELECT * FROM "Table" WHERE PID = ? AND PredDT = ?'''
         try:
-            df_case_info = pd.read_sql_query(info_query, conn, params=(pid, str(preddt)))
+            df_case_info = pd.read_sql_query(info_query, conn, params=(pid, preddt))
         except:
             df_case_info = pd.DataFrame(columns = ['PID', 'PredDT', 'nrow'])
         
@@ -146,7 +146,7 @@ class CRFTC_Base(Dataset):
         
         # len(df_case_info) == 0, here we need to update the database.
         # 1. update info_path
-        df_new = pd.DataFrame([{'PID': pid, 'PredDT': str(preddt), 'nrow': nrow}])
+        df_new = pd.DataFrame([{'PID': pid, 'PredDT': preddt, 'nrow': nrow}])
         df_new.to_sql("Table", conn, if_exists='append', index=False)
 
         cursor = conn.cursor()
