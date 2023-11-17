@@ -1,12 +1,80 @@
+import os
 import pandas as pd
-from recfldgrn.loadtools import get_df_bucket_from_settings
+from functools import reduce
 from recfldgrn.datapoint import convert_PID_to_PIDgroup
+
+def get_df_bucket_from_settings(bucket_file, RecChain_ARGS, RecInfo_ARGS):
+    L = []
+    RecNameID_Chain = [i for i in RecChain_ARGS]
+    for idx, RID in enumerate(RecChain_ARGS):
+        RecInfo = RecChain_ARGS[RID]
+        folder, RecName = RecInfo['folder'], RecInfo['RecName']
+        df = pd.read_pickle(os.path.join(folder, RecName, bucket_file))
+        df = df[RecNameID_Chain[:idx+ 1]].astype(str).drop_duplicates()
+        L.append(df)
+    df_prefix = reduce(lambda left, right: pd.merge(left, right, how = 'left'), L)
+    
+    # fill the missing Rec with missing ID.
+    for RID in RecNameID_Chain:
+        s = 'M' + pd.Series(df_prefix.index).astype(str)
+        df_prefix[RID] = df_prefix[RID].fillna(s)
+    assert len(df_prefix) != 0
+
+    # 2 ----------------- get df_data
+    RecLevelID = RecNameID_Chain[-1] # in most case,  be PID.
+
+    df_whole = df_prefix
+    # you can use a single version: only one record in RecInfo_ARGS
+    for idx, RecElmt in enumerate(RecInfo_ARGS):
+        RecElmt_ARGS = RecInfo_ARGS[RecElmt]
+        folder = RecElmt_ARGS['folder']
+        RecName = RecElmt_ARGS['RecName']
+        FldList = RecElmt_ARGS['Columns']
+        
+        # check whether a file exists.
+        path = os.path.join(folder, RecName, bucket_file)
+        if not os.path.exists(path): 
+            print(f'empty path: {path}')
+            df = pd.DataFrame(columns = [RecLevelID, RecElmt])
+            df_whole = pd.merge(df_whole, df, how = 'left')
+            continue 
+        
+        # read df
+        df = pd.read_pickle(path)
+        
+        # select columns
+        if FldList == 'ALL': FldList = list(df.columns)
+        full_cols = [i for i in RecNameID_Chain if i not in FldList] + FldList
+        full_cols = [i for i in full_cols if i in df.columns]
+        df = df[full_cols].reset_index(drop = True)
+        for RecID in RecNameID_Chain: 
+            if RecID in df.columns: df[RecID] = df[RecID].astype(str)
+
+        # downstream df_data with df_prefix if RecLevelID is not in ID
+        # eg: RecLevelID from df_prefix is Encounter-level, but df is Patient-level.
+        #     we want to convert df has a RecLevelID. 
+        if RecLevelID not in df.columns:
+            on_cols = [i for i in df_prefix.columns if i in df.columns]
+            df = pd.merge(df_prefix, df, on = on_cols, how = 'left')
+
+        # upstream: now df has the RecLevelID, we want to group it by RecLevelID and merge to df_prefix.
+        # df: ['RecLevelID' and 'RecElmt']
+        df = pd.DataFrame([{RecLevelID: RecLevelIDValue, RecElmt: df_input} 
+                           for RecLevelIDValue, df_input in df.groupby(RecLevelID)])
+        
+        df_whole = pd.merge(df_whole, df, how = 'left')
+
+    return df_whole
 
 
 def get_group_info(Group, RecChain_ARGS, RecInfo_ARGS):
     bucket_file = Group + '.p'
-    df = get_df_bucket_from_settings(bucket_file, RecChain_ARGS, RecInfo_ARGS)
-    df['Group'] = Group
+    try:
+        df = get_df_bucket_from_settings(bucket_file, RecChain_ARGS, RecInfo_ARGS)
+        df['Group'] = Group
+    except:
+        print(bucket_file, RecChain_ARGS, RecInfo_ARGS, '<---- error in get_df_bucket_from_settings')
+        df = pd.DataFrame()
     # if type(PID_List) == list: df = df[df['PID'].isin(PID_List)].reset_index(drop = True)
     return df
 

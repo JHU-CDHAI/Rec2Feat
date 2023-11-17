@@ -1,15 +1,7 @@
 import pandas as pd
-from recfldgrn.loadtools import get_df_bucket_from_settings
 from recfldgrn.datapoint import convert_PID_to_PIDgroup
+from .ckpdrec import get_group_info
 from .ckpdrecflt import add_RelativeDT_to_dfCkpdRec
-
-def get_group_info(Group, RecChain_ARGS, RecInfo_ARGS):
-    bucket_file = Group + '.p'
-    df = get_df_bucket_from_settings(bucket_file, RecChain_ARGS, RecInfo_ARGS)
-    df['Group'] = Group
-    # if type(PID_List) == list: df = df[df['PID'].isin(PID_List)].reset_index(drop = True)
-    return df
-
 
 def mapping_hour_to_MAEN(x):
     if x in [6,7,8,9,10,11]:

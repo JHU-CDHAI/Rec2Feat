@@ -70,7 +70,7 @@ def process_CONFIG_CkpdRecFlt_of_PDTInfo(Case_CR, CkpdRec, CONFIG_Flt, UTILS_Flt
         'FilterName': FilterName,
         'FilterFunc': FilterName2FilterFunc[FilterName],
         'ThresShare': FilterName2Share[FilterName],
-        'ThresConfig': RecName2ThresConfig[RecName]
+        'ThresConfig': RecName2ThresConfig.get(RecName, {})
     }
     CkpdRecFlt = CkpdRec + '.' + FilterName
     PredDT = PDTInfo['PredDT']
